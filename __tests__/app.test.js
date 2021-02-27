@@ -1,65 +1,121 @@
-require('dotenv').config();
+const { mungeLocation, mungeWeather, mungeReviews, mungeTrails } = require('../lib/munge-functions');
 
-const { execSync } = require('child_process');
+test('returns required location model', async () => {
 
-const fakeRequest = require('supertest');
-const app = require('../lib/app');
-const client = require('../lib/client');
-
-describe('app routes', () => {
-  describe('routes', () => {
-    let token;
+  const data = 
+    {
+      'lat': '45.5202471',
+      'lon': '-122.6741949',
+      'display_name': 'Portland, Multnomah, Oregon, USA'
+    };
   
-    beforeAll(async done => {
-      execSync('npm run setup-db');
-  
-      client.connect();
-  
-      const signInData = await fakeRequest(app)
-        .post('/auth/signup')
-        .send({
-          email: 'jon@user.com',
-          password: '1234'
-        });
-      
-      token = signInData.body.token; // eslint-disable-line
-  
-      return done();
-    });
-  
-    afterAll(done => {
-      return client.end(done);
-    });
+  const expectedData = {
+    'formatted_query': 'Portland, Multnomah, Oregon, USA',
+    'latitude': '45.5202471',
+    'longitude': '-122.6741949'
+  };
+  const mungedData = mungeLocation(data);
 
-    test.skip('returns animals', async() => {
+  expect(mungedData).toEqual(expectedData);
+});
 
-      const expectation = [
-        {
-          'id': 1,
-          'name': 'bessie',
-          'coolfactor': 3,
-          'owner_id': 1
-        },
-        {
-          'id': 2,
-          'name': 'jumpy',
-          'coolfactor': 4,
-          'owner_id': 1
-        },
-        {
-          'id': 3,
-          'name': 'spot',
-          'coolfactor': 10,
-          'owner_id': 1
-        }
-      ];
+test('returns required weather model for one day', async () => {
 
-      const data = await fakeRequest(app)
-        .get('/animals')
-        .expect('Content-Type', /json/)
-        .expect(200);
+  const data = [
+    {
+      'ts': 1614326460,
+      'weather': {
+        'icon': 'c03d',
+        'code': 803,
+        'description': 'Broken clouds'
+      },
+    }
+  ];
+  
+  const expectedData = [
+    {
+      'forecast': 'Broken clouds',
+      'time': 'Fri Feb 26 2021'
+    }
+  ];
+  const mungedData = mungeWeather(data, 1);
 
-      expect(data.body).toEqual(expectation);
-    });
-  });
+  expect(mungedData).toEqual(expectedData);
+});
+
+test('returns required reviews model for one restaurant', async () => {
+
+  const data = 
+  {
+    'businesses': [
+      {
+        'name': 'Salt & Straw',
+        'image_url': 'https://s3-media4.fl.yelpcdn.com/bphoto/tlm_JobdYI6EQoaMGumUYA/o.jpg',
+        'url': 'https://www.yelp.com/biz/salt-and-straw-portland-4?adjust_creative=qEKMmLhLvBStedzNWFk2lA&utm_campaign=yelp_api_v3&utm_medium=api_v3_business_search&utm_source=qEKMmLhLvBStedzNWFk2lA',
+        'rating': 4.5,
+        'price': '$',
+      }
+    ]
+  };
+
+  const expectedData = [
+    {
+      'name': 'Salt & Straw',
+      'image_url': 'https://s3-media4.fl.yelpcdn.com/bphoto/tlm_JobdYI6EQoaMGumUYA/o.jpg',
+      'price': '$',
+      'rating': 4.5,
+      'url': 'https://www.yelp.com/biz/salt-and-straw-portland-4?adjust_creative=qEKMmLhLvBStedzNWFk2lA&utm_campaign=yelp_api_v3&utm_medium=api_v3_business_search&utm_source=qEKMmLhLvBStedzNWFk2lA'
+    }
+  ];
+  
+  const mungedData = mungeReviews(data);
+
+  expect(mungedData).toEqual(expectedData);
+});
+
+test('returns required trails model for one state park', async () => {
+
+  const data = [
+    {
+      'id': '0DC0CB30-D89B-4232-92A5-CC55425D0EDF',
+      'url': 'https://www.nps.gov/places/bradford-island-visitor-center-at-bonneville-lock-and-dam.htm',
+      'title': 'Bradford Island Visitor Center at Bonneville Lock and Dam',
+      'listingDescription': 'The Bonneville dam was completed in 1943 and was the first dam built on the Columbia River. The Bradford Island Visitor Center, located adjacent to the dam on the Oregon side of the river, displays exhibits on local history, hydropower, and fish life cycles. The Lewis and Clark Expedition camped on Bradford Island on April 9, 1806 upon their return journey.',
+      'latLong': '45.641558,-121.943594',
+      'amenities': [
+        'Fire Extinguisher',
+        'Gifts/Souvenirs/Books',
+        'Historical/Interpretive Information/Exhibits',
+        'Information',
+        'Information - Maps Available',
+        'Information - Park Newspaper Available',
+        'Information - Ranger/Staff Member Present',
+        'Information Kiosk/Bulletin Board',
+        'Parking - Auto',
+        'Restroom',
+        'Scenic View/Photo Spot',
+        'Telephone',
+        'Toilet - Flush'
+      ],
+      'managedByOrg': 'U.S. Army Corps of Engineers',
+    }
+  ];
+
+  const expectedData = [
+    {
+      'name': 'Bradford Island Visitor Center at Bonneville Lock and Dam',
+      'location': '45.641558,-121.943594',
+      'length': 'Fire Extinguisher',
+      'stars': 'Gifts/Souvenirs/Books',
+      'star_votes': 'Historical/Interpretive Information/Exhibits',
+      'summary': 'The Bonneville dam was completed in 1943 and was the first dam built on the Columbia River. The Bradford Island Visitor Center, located adjacent to the dam on the Oregon side of the river, displays exhibits on local history, hydropower, and fish life cycles. The Lewis and Clark Expedition camped on Bradford Island on April 9, 1806 upon their return journey.',
+      'trail_url': 'https://www.nps.gov/places/bradford-island-visitor-center-at-bonneville-lock-and-dam.htm',
+      'conditions': 'Information',
+      'condition_date': 'U.S. Army Corps of Engineers',
+      'condition_time': 'Information - Maps Available'
+    },
+  ];
+  const mungedData = mungeTrails(data);
+
+  expect(mungedData).toEqual(expectedData);
 });
